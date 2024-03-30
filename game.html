@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple Multiplayer Game</title>
+    <style>
+        #gameArea {
+            width: 600px;
+            height: 400px;
+            border: 1px solid black;
+            position: relative;
+            overflow: hidden;
+        }
+        .player {
+            width: 20px;
+            height: 20px;
+            position: absolute;
+            background-color: red;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameArea"></div>
+
+    <script type="module">
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js';
+      import { getAuth, onAuthStateChanged, signInAnonymously } from 'https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js';
+      import { getDatabase, ref, set, onValue } from 'https://www.gstatic.com/firebasejs/9.6.10/firebase-database.js';
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBeADCP8jwqF3KgNplpRqabrgD89tNYzwc",
+        authDomain: "teathenewcoffee.firebaseapp.com",
+        projectId: "teathenewcoffee",
+        storageBucket: "teathenewcoffee.appspot.com",
+        messagingSenderId: "773523949725",
+        appId: "1:773523949725:web:2eef1be72e79e14a2cec74",
+        measurementId: "G-DMF24XDKJC"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const database = getDatabase(app);
+      const auth = getAuth(app);
+
+      signInAnonymously(auth)
+        .then(() => console.log("Signed in anonymously"))
+        .catch((error) => console.error("Sign in error", error));
+
+      const uid = Date.now().toString(36) + Math.random().toString(36).substring(2);
+      const playerRef = ref(database, 'players/' + uid);
+
+      document.addEventListener('keydown', (e) => {
+          onValue(playerRef, (snapshot) => {
+              const player = snapshot.val() || { x: 300, y: 200 };
+              switch (e.key) {
+                  case 'ArrowUp': player.y = Math.max(player.y - 5, 0); break;
+                  case 'ArrowDown': player.y = Math.min(player.y + 5, 400 - 20); break;
+                  case 'ArrowLeft': player.x = Math.max(player.x - 5, 0); break;
+                  case 'ArrowRight': player.x = Math.min(player.x + 5, 600 - 20); break;
+              }
+              set(playerRef, player);
+          }, { onlyOnce: true });
+      });
+
+      onValue(ref(database, 'players/'), (snapshot) => {
+          const players = snapshot.val();
+          const gameArea = document.getElementById('gameArea');
+          gameArea.innerHTML = '';
+          for (const id in players) {
+              const { x, y } = players[id];
+              const playerElement = document.createElement('div');
+              playerElement.classList.add('player');
+              playerElement.style.left = `${x}px`;
+              playerElement.style.top = `${y}px`;
+              gameArea.appendChild(playerElement);
+          }
+      });
+    </script>
+</body>
+</html>
