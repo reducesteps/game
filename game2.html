@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple Multiplayer Game</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #gameArea {
+            width: 600px;
+            height: 400px;
+            border: 1px solid black;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 20px; /* Space between game area and controls */
+        }
+        .player {
+            width: 20px;
+            height: 20px;
+            position: absolute;
+            background-color: red;
+        }
+        #controls {
+            display: flex;
+            justify-content: space-between;
+            width: 200px; /* Adjust the width as needed */
+        }
+        #vertical-controls, #horizontal-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .control-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px; /* Button size */
+            height: 50px; /* Button size */
+            margin: 5px;
+            background: #ddd;
+            cursor: pointer;
+            user-select: none;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+        .control-btn:active {
+            background: #bbb;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameArea"></div>
+     <div id="horizontal-controls">
+        <div class="control-btn" id="moveUp">Up</div>
+    </div>
+    <div id="controls">
+        <div class="control-btn" id="moveLeft">Left</div>
+        <div class="control-btn" id="moveRight">Right</div>
+    </div>
+    <div id="horizontal-controls">
+        <div class="control-btn" id="moveDown">Down</div>
+    </div>
+
+    <script type="module">
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js';
+      import { getAuth, onAuthStateChanged, signInAnonymously } from 'https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js';
+      import { getDatabase, ref, set, onValue } from 'https://www.gstatic.com/firebasejs/9.6.10/firebase-database.js';
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBeADCP8jwqF3KgNplpRqabrgD89tNYzwc",
+        authDomain: "teathenewcoffee.firebaseapp.com",
+        projectId: "teathenewcoffee",
+        storageBucket: "teathenewcoffee.appspot.com",
+        messagingSenderId: "773523949725",
+        appId: "1:773523949725:web:2eef1be72e79e14a2cec74",
+        measurementId: "G-DMF24XDKJC"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const database = getDatabase(app);
+      const auth = getAuth(app);
+
+      signInAnonymously(auth)
+        .then(() => console.log("Signed in anonymously"))
+        .catch((error) => console.error("Sign in error", error));
+
+      const uid = Date.now().toString(36) + Math.random().toString(36).substring(2);
+      const playerRef = ref(database, 'players/' + uid);
+
+      document.addEventListener('keydown', (e) => {
+          onValue(playerRef, (snapshot) => {
+              const player = snapshot.val() || { x: 300, y: 200 };
+              switch (e.key) {
+                  case 'ArrowUp': player.y = Math.max(player.y - 5, 0); break;
+                  case 'ArrowDown': player.y = Math.min(player.y + 5, 400 - 20); break;
+                  case 'ArrowLeft': player.x = Math.max(player.x - 5, 0); break;
+                  case 'ArrowRight': player.x = Math.min(player.x + 5, 600 - 20); break;
+              }
+              set(playerRef, player);
+          }, { onlyOnce: true });
+      });
+
+      onValue(ref(database, 'players/'), (snapshot) => {
+          const players = snapshot.val();
+          const gameArea = document.getElementById('gameArea');
+          gameArea.innerHTML = '';
+          for (const id in players) {
+              const { x, y } = players[id];
+              const playerElement = document.createElement('div');
+              playerElement.classList.add('player');
+              playerElement.style.left = `${x}px`;
+              playerElement.style.top = `${y}px`;
+              gameArea.appendChild(playerElement);
+          }
+      });
+
+
+
+
+const movePlayer = (dx, dy) => {
+    onValue(playerRef, (snapshot) => {
+        const player = snapshot.val() || { x: 300, y: 200 };
+        player.x = Math.max(0, Math.min(600 - 20, player.x + dx));
+        player.y = Math.max(0, Math.min(400 - 20, player.y + dy));
+        set(playerRef, player).then(() => {
+            // Call the collision check after successfully updating the player position
+            checkCollisionsAndIncreaseSpeed(uid);
+        });
+    }, { onlyOnce: true });
+};
+
+
+        document.getElementById('moveUp').addEventListener('click', () => movePlayer(0, -5));
+        document.getElementById('moveDown').addEventListener('click', () => movePlayer(0, 5));
+        document.getElementById('moveLeft').addEventListener('click', () => movePlayer(-5, 0));
+        document.getElementById('moveRight').addEventListener('click', () => movePlayer(5, 0));
+
+   
+
+        let moveInterval;
+        const startMoving = (dx, dy) => {
+            stopMoving(); // Clear existing intervals
+            moveInterval = setInterval(() => movePlayer(dx, dy), 50); // Move every 50ms
+        };
+
+        const stopMoving = () => {
+            if (moveInterval) clearInterval(moveInterval);
+        };
+
+        const setupControl = (elementId, dx, dy) => {
+            const element = document.getElementById(elementId);
+            element.addEventListener('mousedown', () => startMoving(dx, dy));
+            element.addEventListener('mouseup', () => stopMoving());
+            element.addEventListener('mouseleave', () => stopMoving());
+            element.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // Prevents the touch from triggering mouse events
+                startMoving(dx, dy);
+            }, { passive: false });
+            element.addEventListener('touchend', () => stopMoving());
+        };
+
+        setupControl('moveUp', 0, -5);
+        setupControl('moveDown', 0, 5);
+        setupControl('moveLeft', -5, 0);
+        setupControl('moveRight', 5, 0);
+
+
+// Existing imports and Firebase initialization...
+
+// Initialize Firebase, authenticate, and setup your game...
+
+// Additional global variables
+let enemies = {}; // To store enemies
+
+// Function to create enemies
+function createEnemy() {
+    const eid = Date.now().toString(36) + Math.random().toString(36).substring(2);
+    // Place enemy at a random location on one side of the game area
+    enemies[eid] = {
+        x: Math.random() * 600, // Assuming game area width is 600
+        y: 0, // Start from top
+        speed: 5000 // Pixels per frame movement towards the player
+    };
+    moveEnemies(); // Start moving enemies right away
+}
+
+// Global variable to control the update frequency
+const updateFrequency = 0.1; // Update every 20 milliseconds
+
+// Function to start the continuous movement of enemies
+function startEnemyMovement() {
+    setInterval(() => {
+        moveEnemies();
+        updateGameArea();
+    }, updateFrequency);
+}
+
+// Modified moveEnemies function for smoother sliding
+function moveEnemies() {
+    const playersRef = ref(database, 'players/');
+    onValue(playersRef, (snapshot) => {
+        const players = snapshot.val();
+        if (!players) return; // No players to chase, skip the update
+
+        Object.keys(enemies).forEach(eid => {
+            let enemy = enemies[eid];
+            let nearestPlayerId = null;
+            let shortestDistance = Infinity;
+
+            // Find the nearest player
+            Object.keys(players).forEach(pid => {
+                const player = players[pid];
+                const distance = Math.sqrt((player.x - enemy.x) ** 2 + (player.y - enemy.y) ** 2);
+                if (distance < shortestDistance) {
+                    shortestDistance = distance;
+                    nearestPlayerId = pid;
+                }
+            });
+
+            // Move enemy towards the nearest player
+            if (nearestPlayerId) {
+                const nearestPlayer = players[nearestPlayerId];
+                const deltaX = nearestPlayer.x - enemy.x;
+                const deltaY = nearestPlayer.y - enemy.y;
+                const angle = Math.atan2(deltaY, deltaX);
+
+                // Adjust speed based on distance to avoid overshooting
+                const speed = enemy.speed * updateFrequency / 1000;
+                enemy.x += Math.cos(angle) * speed;
+                enemy.y += Math.sin(angle) * speed;
+
+                // Check for collision (assuming player and enemy squares are 20px)
+                if (shortestDistance <= 20) {
+                    // Remove player and enemy on collision
+                    set(ref(database, 'players/' + nearestPlayerId), null); // Remove player from database
+                    delete enemies[eid]; // Remove enemy
+                }
+            }
+        });
+    }, { onlyOnce: true });
+}
+
+// Start enemy movement updates
+startEnemyMovement();
+
+
+// Function to update the game area
+function updateGameArea() {
+    const gameArea = document.getElementById('gameArea');
+    // Clear previous enemies
+    document.querySelectorAll('.enemy').forEach(e => e.remove());
+
+    // Add current enemies
+    for (const eid in enemies) {
+        const enemy = enemies[eid];
+        const enemyElement = document.createElement('div');
+        enemyElement.classList.add('enemy');
+        enemyElement.style.left = enemy.x + 'px';
+        enemyElement.style.top = enemy.y + 'px';
+        enemyElement.style.width = '20px';
+        enemyElement.style.height = '20px';
+        enemyElement.style.position = 'absolute';
+        enemyElement.style.backgroundColor = 'blue';
+        gameArea.appendChild(enemyElement);
+    }
+
+
+
+     // Draw power-up squares
+    for (const id in powerUps) {
+        const powerUp = powerUps[id];
+        const powerUpElement = document.createElement('div');
+        powerUpElement.style.left = powerUp.x + 'px';
+        powerUpElement.style.top = powerUp.y + 'px';
+        powerUpElement.style.width = '20px';
+        powerUpElement.style.height = '20px';
+        powerUpElement.style.position = 'absolute';
+        powerUpElement.style.backgroundColor = 'green';
+        gameArea.appendChild(powerUpElement);
+    }
+}
+
+// Start generating enemies every 5 seconds
+setInterval(createEnemy, 1000);
+
+// Extend your existing game logic to incorporate these functionalities.
+
+// Assuming you have a function to update the game area already, add this:
+let powerUps = {}; // To store power-up squares
+
+function createGreenSquare() {
+    console.log("Creating a green square..."); // Diagnostic log
+    const id = Date.now().toString(36) + Math.random().toString(36).substring(2);
+    powerUps[id] = {
+        x: Math.random() * 580,
+        y: Math.random() * 380,
+    };
+    updateGameArea(); // Make sure to redraw the game area including the new square
+}
+
+
+// Start generating green squares every 10 seconds
+setInterval(createGreenSquare, 1000);
+
+
+// Modify your existing player movement logic to include:
+function checkCollisionsAndIncreaseSpeed(playerId) {
+    const playerRef = ref(database, 'players/' + playerId);
+    onValue(playerRef, (snapshot) => {
+        const player = snapshot.val();
+        if (!player) return;
+
+        Object.keys(powerUps).forEach(id => {
+            const powerUp = powerUps[id];
+            // Simple collision detection (assuming player and square sizes)
+            if (Math.abs(player.x - powerUp.x) < 20 && Math.abs(player.y - powerUp.y) < 20) {
+                player.speed = player.speed ? player.speed * 1.1 : 1.1; // Increase speed by 10%
+                delete powerUps[id]; // Remove the power-up after collision
+                set(playerRef, player); // Update player data
+            }
+        });
+    }, { onlyOnce: true });
+}
+
+// Ensure you call checkCollisionsAndIncreaseSpeed for each player movement update
+
+
+
+    </script>
+</body>
+</html>
+
+
+
+
+
