@@ -185,7 +185,7 @@ function createEnemy() {
     enemies[eid] = {
         x: Math.random() * 600, // Assuming game area width is 600
         y: 0, // Start from top
-        speed: 5000 // Pixels per frame movement towards the player
+        speed: 1000 // Pixels per frame movement towards the player
     };
     moveEnemies(); // Start moving enemies right away
 }
@@ -287,7 +287,7 @@ function updateGameArea() {
 }
 
 // Start generating enemies every 5 seconds
-setInterval(createEnemy, 1000);
+setInterval(createEnemy, 5000);
 
 // Extend your existing game logic to incorporate these functionalities.
 
@@ -306,7 +306,7 @@ function createGreenSquare() {
 
 
 // Start generating green squares every 10 seconds
-setInterval(createGreenSquare, 1000);
+setInterval(createGreenSquare, 10000);
 
 
 // Modify your existing player movement logic to include:
@@ -320,7 +320,7 @@ function checkCollisionsAndIncreaseSpeed(playerId) {
             const powerUp = powerUps[id];
             // Simple collision detection (assuming player and square sizes)
             if (Math.abs(player.x - powerUp.x) < 20 && Math.abs(player.y - powerUp.y) < 20) {
-                player.speed = player.speed ? player.speed * 1.1 : 1.1; // Increase speed by 10%
+                player.speed = player.speed ? player.speed * 1.5 : 1.5; // Increase speed by 10%
                 delete powerUps[id]; // Remove the power-up after collision
                 set(playerRef, player); // Update player data
             }
